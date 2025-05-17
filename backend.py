@@ -47,16 +47,15 @@ AZURE_STORAGE_CONTAINER = client.get_secret('PROJ-AZURE-STORAGE-CONTAINER').valu
 CHROMADB_HOST = client.get_secret('PROJ-CHROMADB-HOST').value
 CHROMADB_PORT = client.get_secret('PROJ-CHROMADB-PORT').value
 
-# B2C Authentication configuration
-B2C_TENANT_NAME = client.get_secret('PROJ-B2C-TENANT-NAME').value
-B2C_CLIENT_ID = client.get_secret('PROJ-B2C-CLIENT-ID').value
-B2C_CLIENT_SECRET = client.get_secret('PROJ-B2C-CLIENT-SECRET').value
-B2C_SIGNUP_SIGNIN_POLICY = client.get_secret('PROJ-B2C-SIGNUP-SIGNIN-POLICY').value
-B2C_PASSWORD_RESET_POLICY = client.get_secret('PROJ-B2C-PASSWORD-RESET-POLICY').value
+# Microsoft Entra External ID configuration
+ENTRA_TENANT_NAME = client.get_secret('PROJ-ENTRA-TENANT-NAME').value
+ENTRA_CLIENT_ID = client.get_secret('PROJ-ENTRA-CLIENT-ID').value
+ENTRA_CLIENT_SECRET = client.get_secret('PROJ-ENTRA-CLIENT-SECRET').value
+ENTRA_POLICY_ID = client.get_secret('PROJ-ENTRA-POLICY-ID').value
+ENTRA_AUTHORITY_DOMAIN = client.get_secret('PROJ-ENTRA-AUTHORITY-DOMAIN').value
 
 # Arabic language support
 SUPPORT_ARABIC = os.environ.get("SUPPORT_ARABIC", "false").lower() == "true"
-
 
 DB_CONFIG = {
     "dbname": DB_NAME,
@@ -110,10 +109,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# OAuth2 scheme for B2C authentication
+# OAuth2 scheme for Microsoft Entra External ID authentication
 oauth2_scheme = OAuth2AuthorizationCodeBearer(
-    authorizationUrl=f"https://{B2C_TENANT_NAME}.b2clogin.com/{B2C_TENANT_NAME}/{B2C_SIGNUP_SIGNIN_POLICY}/oauth2/v2.0/authorize",
-    tokenUrl=f"https://{B2C_TENANT_NAME}.b2clogin.com/{B2C_TENANT_NAME}/{B2C_SIGNUP_SIGNIN_POLICY}/oauth2/v2.0/token",
+    authorizationUrl=f"https://{ENTRA_AUTHORITY_DOMAIN}/{ENTRA_TENANT_NAME}/oauth2/v2.0/authorize",
+    tokenUrl=f"https://{ENTRA_AUTHORITY_DOMAIN}/{ENTRA_TENANT_NAME}/oauth2/v2.0/token",
     scopes={"https://graph.microsoft.com/User.Read": "User.Read"},
 )
 
@@ -151,14 +150,14 @@ def get_db():
     finally:
         conn.close()
 
-# Validate token from B2C
+# Validate token from Microsoft Entra External ID
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
         # Validate token with Microsoft
         app = msal.ConfidentialClientApplication(
-            B2C_CLIENT_ID,
-            authority=f"https://{B2C_TENANT_NAME}.b2clogin.com/{B2C_TENANT_NAME}/{B2C_SIGNUP_SIGNIN_POLICY}",
-            client_credential=B2C_CLIENT_SECRET,
+            ENTRA_CLIENT_ID,
+            authority=f"https://{ENTRA_AUTHORITY_DOMAIN}/{ENTRA_TENANT_NAME}",
+            client_credential=ENTRA_CLIENT_SECRET,
         )
         
         # Verify the token
@@ -185,12 +184,12 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 # Authentication endpoints
 @app.get("/auth/login")
 async def login():
-    auth_url = f"https://{B2C_TENANT_NAME}.b2clogin.com/{B2C_TENANT_NAME}/{B2C_SIGNUP_SIGNIN_POLICY}/oauth2/v2.0/authorize?client_id={B2C_CLIENT_ID}&response_type=code&redirect_uri=https://your-app-gateway-url/auth/redirect&scope=openid%20profile%20offline_access"
+    auth_url = f"https://{ENTRA_AUTHORITY_DOMAIN}/{ENTRA_TENANT_NAME}/oauth2/v2.0/authorize?client_id={ENTRA_CLIENT_ID}&response_type=code&redirect_uri=http://divstar.digital/auth/redirect&scope=openid%20profile%20offline_access"
     return RedirectResponse(url=auth_url)
 
 @app.get("/auth/redirect")
 async def auth_redirect(code: str):
-    # Handle the authorization code from B2C
+    # Handle the authorization code from Entra External ID
     # Exchange it for tokens
     return {"message": "Authentication successful", "code": code}
 
@@ -199,9 +198,9 @@ async def get_token(request: TokenRequest):
     try:
         # Exchange authorization code for tokens
         app = msal.ConfidentialClientApplication(
-            B2C_CLIENT_ID,
-            authority=f"https://{B2C_TENANT_NAME}.b2clogin.com/{B2C_TENANT_NAME}/{B2C_SIGNUP_SIGNIN_POLICY}",
-            client_credential=B2C_CLIENT_SECRET,
+            ENTRA_CLIENT_ID,
+            authority=f"https://{ENTRA_AUTHORITY_DOMAIN}/{ENTRA_TENANT_NAME}",
+            client_credential=ENTRA_CLIENT_SECRET,
         )
         
         result = app.acquire_token_by_authorization_code(
@@ -340,7 +339,6 @@ async def save_chat(request: SaveChatRequest, db: psycopg2.extensions.connection
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
-
 @app.post("/delete_chat/")
 async def delete_chat(request: DeleteChatRequest, db: psycopg2.extensions.connection = Depends(get_db), user: Dict[str, Any] = Depends(get_current_user)):
     try:
@@ -380,7 +378,6 @@ async def delete_chat(request: DeleteChatRequest, db: psycopg2.extensions.connec
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-    
 
 @app.post("/upload_pdf/")
 async def upload_pdf(file: UploadFile = File(...), user: Dict[str, Any] = Depends(get_current_user)):
@@ -436,7 +433,6 @@ async def upload_pdf(file: UploadFile = File(...), user: Dict[str, Any] = Depend
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
-
 
 @app.post("/rag_chat/")
 async def rag_chat(request: RAGChatRequest, user: Dict[str, Any] = Depends(get_current_user)):
@@ -553,5 +549,3 @@ async def rag_chat(request: RAGChatRequest, user: Dict[str, Any] = Depends(get_c
 
     # Use StreamingResponse to return
     return StreamingResponse(stream_response(), media_type="text/plain")
-
-

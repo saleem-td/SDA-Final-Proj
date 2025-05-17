@@ -7,18 +7,18 @@ from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
 from langdetect import detect
 
-# Get B2C credentials from Key Vault
+# Get Microsoft Entra External ID credentials from Key Vault
 try:
     credential = DefaultAzureCredential()
     key_vault_name = os.environ.get("KEY_VAULT_NAME")
     key_vault_url = f"https://{key_vault_name}.vault.azure.net"
     secret_client = SecretClient(vault_url=key_vault_url, credential=credential)
 
-    # B2C configuration
-    tenant_name = secret_client.get_secret("PROJ-B2C-TENANT-NAME").value
-    client_id = secret_client.get_secret("PROJ-B2C-CLIENT-ID").value
-    signup_signin_policy = secret_client.get_secret("PROJ-B2C-SIGNUP-SIGNIN-POLICY").value
-    password_reset_policy = secret_client.get_secret("PROJ-B2C-PASSWORD-RESET-POLICY").value
+    # Entra External ID configuration
+    tenant_name = secret_client.get_secret("PROJ-ENTRA-TENANT-NAME").value
+    client_id = secret_client.get_secret("PROJ-ENTRA-CLIENT-ID").value
+    policy_id = secret_client.get_secret("PROJ-ENTRA-POLICY-ID").value
+    authority_domain = secret_client.get_secret("PROJ-ENTRA-AUTHORITY-DOMAIN").value
     
     # Check if Arabic support is enabled
     support_arabic = os.environ.get("SUPPORT_ARABIC", "false").lower() == "true"
@@ -26,8 +26,8 @@ except Exception as e:
     st.error(f"Error loading configuration: {str(e)}")
     tenant_name = ""
     client_id = ""
-    signup_signin_policy = ""
-    password_reset_policy = ""
+    policy_id = ""
+    authority_domain = "login.microsoftonline.com"
     support_arabic = False
 
 # Backend URLs define
@@ -40,15 +40,14 @@ CHAT_URL = f"{BACKEND_URL}/chat/"
 RAG_CHAT_URL = f"{BACKEND_URL}/rag_chat/"
 AUTH_TOKEN_URL = f"{BACKEND_URL}/auth/token"
 
-# B2C URLs
-B2C_AUTHORITY = f"https://{tenant_name}.b2clogin.com/{tenant_name}/{signup_signin_policy}"
-B2C_RESET_AUTHORITY = f"https://{tenant_name}.b2clogin.com/{tenant_name}/{password_reset_policy}"
-REDIRECT_URI = f"{BACKEND_URL}/auth/redirect"
+# Entra External ID URLs
+ENTRA_AUTHORITY = f"https://{authority_domain}/{tenant_name}"
+REDIRECT_URI = "http://divstar.digital/auth/redirect"
 
 # Initialize MSAL app
 app = msal.PublicClientApplication(
     client_id,
-    authority=B2C_AUTHORITY
+    authority=ENTRA_AUTHORITY
 )
 
 # Add Arabic support CSS
@@ -232,7 +231,7 @@ def sign_in():
     st.markdown(f"[Click here to sign in]({auth_url})")
 
 def sign_up():
-    # For sign up, we use the same policy as it handles both
+    # For sign up with Microsoft Entra External ID
     auth_url = app.get_authorization_request_url(
         ["https://graph.microsoft.com/User.Read"],
         redirect_uri=REDIRECT_URI
@@ -240,12 +239,8 @@ def sign_up():
     st.markdown(f"[Click here to sign up]({auth_url})")
 
 def reset_password():
-    # For password reset, we need a different policy
-    reset_app = msal.PublicClientApplication(
-        client_id,
-        authority=B2C_RESET_AUTHORITY
-    )
-    reset_url = reset_app.get_authorization_request_url(
+    # For password reset with Microsoft Entra External ID
+    reset_url = app.get_authorization_request_url(
         ["https://graph.microsoft.com/User.Read"],
         redirect_uri=REDIRECT_URI
     )
@@ -301,6 +296,7 @@ if support_arabic:
 
 # Handle authentication code if present
 handle_auth_code()
+
 # Define translations
 translations = {
     "English": {
@@ -536,4 +532,3 @@ else:
             st.markdown(f'<div data-language="العربية">{t["no_chat_selected"]}</div>', unsafe_allow_html=True)
         else:
             st.write(t["no_chat_selected"])
-
