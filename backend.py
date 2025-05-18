@@ -196,10 +196,63 @@ async def logout():
 
 
 @app.get("/auth/callback")
-async def auth_callback(code: str):
-    # Handle the authorization code from Entra External ID
-    # Exchange it for tokens
-    return {"message": "Authentication successful", "code": code}
+async def auth_callback(code: str, request: Request):
+    # Log that we received a callback
+    print(f"Received callback with code: {code[:5]}...")
+    
+    try:
+        # Exchange code for token
+        app_instance = msal.ConfidentialClientApplication(
+            ENTRA_CLIENT_ID,
+            authority=f"https://{ENTRA_AUTHORITY_DOMAIN}/{ENTRA_TENANT_NAME}",
+            client_credential=ENTRA_CLIENT_SECRET,
+        )
+        
+        result = app_instance.acquire_token_by_authorization_code(
+            code,
+            scopes=["https://graph.microsoft.com/User.Read"],
+            redirect_uri="https://divstar.digital/auth/callback"
+        )
+        
+        if "error" in result:
+            print(f"Error in token acquisition: {result.get('error_description')}")
+            return HTMLResponse(content=f"""
+            <html>
+                <body>
+                    <h1>Authentication Error</h1>
+                    <p>{result.get('error_description')}</p>
+                    <a href="/">Return to home</a>
+                </body>
+            </html>
+            """)
+        
+        # Successful authentication - redirect to main app with token
+        return HTMLResponse(content=f"""
+        <html>
+            <body>
+                <h1>Authentication Successful</h1>
+                <p>Redirecting to application...</p>
+                <script>
+                    // Store token in localStorage
+                    localStorage.setItem('auth_token', '{result.get("access_token")}');
+                    localStorage.setItem('user_name', '{result.get("id_token_claims", {}).get("name", "User")}');
+                    // Redirect to main application
+                    window.location.href = '/';
+                </script>
+            </body>
+        </html>
+        """)
+    except Exception as e:
+        print(f"Exception in callback: {str(e)}")
+        return HTMLResponse(content=f"""
+        <html>
+            <body>
+                <h1>Authentication Error</h1>
+                <p>An error occurred: {str(e)}</p>
+                <a href="/">Return to home</a>
+            </body>
+        </html>
+        """)
 
 @app.post("/auth/token")
 async def get_token(request: TokenRequest):
