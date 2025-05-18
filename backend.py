@@ -1,6 +1,8 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, Request, status
 from fastapi.security import OAuth2AuthorizationCodeBearer
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from openai import OpenAI
 from fastapi.responses import StreamingResponse, RedirectResponse
@@ -26,6 +28,8 @@ from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
 import chromadb
 from langdetect import detect
+from flask import session, redirect, request, url_for
+
 
 load_dotenv()
 
@@ -48,12 +52,25 @@ CHROMADB_HOST = client.get_secret('PROJ-CHROMADB-HOST').value
 CHROMADB_PORT = client.get_secret('PROJ-CHROMADB-PORT').value
 
 # Microsoft Entra External ID configuration
+
 ENTRA_TENANT_ID         = client.get_secret('PROJ-ENTRA-TENANT-ID').value
 ENTRA_TENANT_NAME       = client.get_secret('PROJ-ENTRA-TENANT-NAME').value
 ENTRA_CLIENT_ID         = client.get_secret('PROJ-ENTRA-CLIENT-ID').value
-ENTRA_CLIENT_SECRET     = client.get_secret('PROJ-ENTRA-CLIENT-SECRET').value
+ENTRA_CLIENT_SECRET     = os.environ.get("ENTRA_CLIENT_SECRET")
 ENTRA_POLICY_ID         = client.get_secret('PROJ-ENTRA-POLICY-ID').value
 ENTRA_AUTHORITY_DOMAIN  = client.get_secret('PROJ-ENTRA-AUTHORITY-DOMAIN').value
+
+
+# Access environment variables
+tenant_name             = os.environ.get("ENTRA_TENANT_NAME")
+client_id               = os.environ.get("ENTRA_CLIENT_ID")
+client_secret           = os.environ.get("ENTRA_CLIENT_SECRET")
+policy_id               = os.environ.get("ENTRA_POLICY_ID")
+authority_domain        = os.environ.get("ENTRA_AUTHORITY_DOMAIN")
+
+
+
+
 
 # Arabic language support
 SUPPORT_ARABIC = os.environ.get("SUPPORT_ARABIC", "false").lower() == "true"
@@ -183,17 +200,67 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         )
 
 # Authentication endpoints
-@app.get("/auth/login")
+
+# Configuration values from Azure portal
+CLIENT_ID = "d478dedc-ddd5-48be-8fd5-338b09c1adbd"  # Your application's client ID
+CLIENT_SECRET = client_secret # Your application's client secret
+AUTHORITY = "https://login.microsoftonline.com/d3af128d-3b0d-4d96-bedd-31fd6a67d75c"  # Your tenant ID
+REDIRECT_URI = "http://localhost:5000/getAToken"  # The redirect URI you registered
+SCOPE = ["User.ReadBasic.All"]  # The permissions you need
+
+# Initialize MSAL application
+app_config = {
+    "client_id": CLIENT_ID,
+    "client_secret": CLIENT_SECRET,
+    "authority": AUTHORITY,
+    "redirect_uri": REDIRECT_URI,
+}
+
+# Create a confidential client application
+app = msal.ConfidentialClientApplication(
+    app_config["client_id"], 
+    authority=app_config["authority"],
+    client_credential=app_config["client_secret"]
+)
+
+@app.get("/login")
 async def login():
-    auth_url = f"https://{ENTRA_AUTHORITY_DOMAIN}/{ENTRA_TENANT_NAME}/oauth2/v2.0/authorize?client_id={ENTRA_CLIENT_ID}&response_type=code&redirect_uri=https://divstar.digital/auth/callback&scope=openid%20profile%20offline_access"
+    # Get the authorization URL and state
+    auth_url = app.get_authorization_request_url(
+        SCOPE,
+        redirect_uri=app_config["redirect_uri"],
+        state="your_state_value"
+    )
     return RedirectResponse(url=auth_url)
+
+@app.get("/getAToken")
+async def get_token(code: str = None, state: str = None):
+    if code:
+        # Exchange the authorization code for a token
+        result = app.acquire_token_by_authorization_code(
+            code,
+            scopes=SCOPE,
+            redirect_uri=app_config["redirect_uri"]
+        )
+        
+        if "error" in result:
+            return {"error": result.get("error"), "error_description": result.get("error_description")}
+        
+        # Store the token in your session or database
+        # session["token"] = result
+        
+        # Redirect to your application's home page
+        return RedirectResponse(url="/")
+    else:
+        return {"error": "No code received"}
 
 @app.get("/logout")
 async def logout():
-    # Clear any server-side session data if needed
-    # Then redirect to the home page or login page
-    return RedirectResponse(url="/")
-
+    # Clear the user's session
+    # session.clear()
+    
+    # Redirect to Microsoft logout endpoint
+    return RedirectResponse(url=f"{AUTHORITY}/oauth2/v2.0/logout?post_logout_redirect_uri={app_config['redirect_uri']}")
 
 @app.get("/auth/callback")
 async def auth_callback(code: str, request: Request):
