@@ -184,7 +184,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 # Authentication endpoints
 @app.get("/auth/login")
 async def login():
-    auth_url = f"https://{ENTRA_AUTHORITY_DOMAIN}/{ENTRA_TENANT_NAME}/oauth2/v2.0/authorize?client_id={ENTRA_CLIENT_ID}&response_type=code&redirect_uri=http://divstar.digital/auth/redirect&scope=openid%20profile%20offline_access"
+    auth_url = f"https://{ENTRA_AUTHORITY_DOMAIN}/{ENTRA_TENANT_NAME}/oauth2/v2.0/authorize?client_id={ENTRA_CLIENT_ID}&response_type=code&redirect_uri=https://divstar.digital/auth/redirect&scope=openid%20profile%20offline_access"
     return RedirectResponse(url=auth_url)
 
 @app.get("/auth/redirect")

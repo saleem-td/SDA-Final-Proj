@@ -42,7 +42,7 @@ AUTH_TOKEN_URL = f"{BACKEND_URL}/auth/token"
 
 # Entra External ID URLs
 ENTRA_AUTHORITY = f"https://{authority_domain}/{tenant_name}"
-REDIRECT_URI = "http://divstar.digital/auth/redirect"
+REDIRECT_URI = "https://divstar.digital/auth/redirect"
 
 # Initialize MSAL app
 app = msal.PublicClientApplication(
