@@ -27,9 +27,9 @@ try:
     support_arabic = os.environ.get("SUPPORT_ARABIC", "false").lower() == "true"
 except Exception as e:
     st.error(f"Error loading configuration: {str(e)}")
-    tenant_name = ""
-    client_id   = ""
-    policy_id   = ""
+    tenant_name = "SaudiDigital.onmicrosoft.com"
+    client_id   = "d478dedc-ddd5-48be-8fd5-338b09c1adbd"
+    policy_id   = "B2X_1_sign-up_sign-in"
     authority   = "https://login.microsoftonline.com/d3af128d-3b0d-4d96-bedd-31fd6a67d75c"
     support_arabic = False
 
