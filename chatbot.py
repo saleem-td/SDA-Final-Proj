@@ -30,7 +30,7 @@ except Exception as e:
     tenant_name = ""
     client_id   = ""
     policy_id   = ""
-    authority   = f"https://login.microsoftonline.com/{tenant_id}"
+    authority   = "https://login.microsoftonline.com/d3af128d-3b0d-4d96-bedd-31fd6a67d75c"
     support_arabic = False
 
 # Backend URLs define
