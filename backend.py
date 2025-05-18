@@ -48,11 +48,12 @@ CHROMADB_HOST = client.get_secret('PROJ-CHROMADB-HOST').value
 CHROMADB_PORT = client.get_secret('PROJ-CHROMADB-PORT').value
 
 # Microsoft Entra External ID configuration
-ENTRA_TENANT_NAME = client.get_secret('PROJ-ENTRA-TENANT-NAME').value
-ENTRA_CLIENT_ID = client.get_secret('PROJ-ENTRA-CLIENT-ID').value
-ENTRA_CLIENT_SECRET = client.get_secret('PROJ-ENTRA-CLIENT-SECRET').value
-ENTRA_POLICY_ID = client.get_secret('PROJ-ENTRA-POLICY-ID').value
-ENTRA_AUTHORITY_DOMAIN = client.get_secret('PROJ-ENTRA-AUTHORITY-DOMAIN').value
+ENTRA_TENANT_ID         = client.get_secret('PROJ-ENTRA-TENANT-ID').value
+ENTRA_TENANT_NAME       = client.get_secret('PROJ-ENTRA-TENANT-NAME').value
+ENTRA_CLIENT_ID         = client.get_secret('PROJ-ENTRA-CLIENT-ID').value
+ENTRA_CLIENT_SECRET     = client.get_secret('PROJ-ENTRA-CLIENT-SECRET').value
+ENTRA_POLICY_ID         = client.get_secret('PROJ-ENTRA-POLICY-ID').value
+ENTRA_AUTHORITY_DOMAIN  = client.get_secret('PROJ-ENTRA-AUTHORITY-DOMAIN').value
 
 # Arabic language support
 SUPPORT_ARABIC = os.environ.get("SUPPORT_ARABIC", "false").lower() == "true"

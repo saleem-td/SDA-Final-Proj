@@ -15,19 +15,22 @@ try:
     secret_client = SecretClient(vault_url=key_vault_url, credential=credential)
 
     # Entra External ID configuration
-    tenant_name = secret_client.get_secret("PROJ-ENTRA-TENANT-NAME").value
-    client_id = secret_client.get_secret("PROJ-ENTRA-CLIENT-ID").value
-    policy_id = secret_client.get_secret("PROJ-ENTRA-POLICY-ID").value
-    authority_domain = secret_client.get_secret("PROJ-ENTRA-AUTHORITY-DOMAIN").value
     
+    tenant_id           = secret_client.get_secret("PROJ-ENTRA-TENANT-ID").value
+    tenant_name         = secret_client.get_secret("PROJ-ENTRA-TENANT-NAME").value
+    client_id           = secret_client.get_secret("PROJ-ENTRA-CLIENT-ID").value
+    policy_id           = secret_client.get_secret("PROJ-ENTRA-POLICY-ID").value
+    authority_domain    = secret_client.get_secret("PROJ-ENTRA-AUTHORITY-DOMAIN").value
+
+
     # Check if Arabic support is enabled
     support_arabic = os.environ.get("SUPPORT_ARABIC", "false").lower() == "true"
 except Exception as e:
     st.error(f"Error loading configuration: {str(e)}")
     tenant_name = ""
-    client_id = ""
-    policy_id = ""
-    authority_domain = "login.microsoftonline.com"
+    client_id   = ""
+    policy_id   = ""
+    authority   = f"https://login.microsoftonline.com/{tenant_id}"
     support_arabic = False
 
 # Backend URLs define
