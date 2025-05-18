@@ -44,7 +44,7 @@ RAG_CHAT_URL = f"{BACKEND_URL}/rag_chat/"
 AUTH_TOKEN_URL = f"{BACKEND_URL}/auth/token"
 
 # Entra External ID URLs
-ENTRA_AUTHORITY = f"https://{authority_domain}/{tenant_name}"
+ENTRA_AUTHORITY = "https://login.microsoftonline.com/d3af128d-3b0d-4d96-bedd-31fd6a67d75c"
 REDIRECT_URI = "https://divstar.digital/auth/redirect"
 
 # Initialize MSAL app
