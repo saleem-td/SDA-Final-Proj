@@ -45,7 +45,7 @@ AUTH_TOKEN_URL = f"{BACKEND_URL}/auth/token"
 
 # Entra External ID URLs
 ENTRA_AUTHORITY = "https://login.microsoftonline.com/d3af128d-3b0d-4d96-bedd-31fd6a67d75c"
-REDIRECT_URI = "https://divstar.digital/auth/redirect"
+REDIRECT_URI = "https://divstar.digital/auth/callback"
 
 # Initialize MSAL app
 app = msal.PublicClientApplication(
@@ -256,7 +256,10 @@ def sign_out():
     st.session_state["history_chats"] = []
     st.session_state["current_chat"] = None
     st.session_state["chat_names"] = {}
-    st.experimental_rerun()
+    
+    # Redirect to Microsoft Entra ID logout endpoint
+    logout_url = f"{ENTRA_AUTHORITY}/oauth2/v2.0/logout?post_logout_redirect_uri={REDIRECT_URI}"
+    st.markdown(f"<meta http-equiv='refresh' content='0;url={logout_url}'>", unsafe_allow_html=True)
 
 # Handle authentication code from URL
 def handle_auth_code():

@@ -185,11 +185,18 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
 # Authentication endpoints
 @app.get("/auth/login")
 async def login():
-    auth_url = f"https://{ENTRA_AUTHORITY_DOMAIN}/{ENTRA_TENANT_NAME}/oauth2/v2.0/authorize?client_id={ENTRA_CLIENT_ID}&response_type=code&redirect_uri=https://divstar.digital/auth/redirect&scope=openid%20profile%20offline_access"
+    auth_url = f"https://{ENTRA_AUTHORITY_DOMAIN}/{ENTRA_TENANT_NAME}/oauth2/v2.0/authorize?client_id={ENTRA_CLIENT_ID}&response_type=code&redirect_uri=https://divstar.digital/auth/callback&scope=openid%20profile%20offline_access"
     return RedirectResponse(url=auth_url)
 
-@app.get("/auth/redirect")
-async def auth_redirect(code: str):
+@app.get("/logout")
+async def logout():
+    # Clear any server-side session data if needed
+    # Then redirect to the home page or login page
+    return RedirectResponse(url="/")
+
+
+@app.get("/auth/callback")
+async def auth_callback(code: str):
     # Handle the authorization code from Entra External ID
     # Exchange it for tokens
     return {"message": "Authentication successful", "code": code}
